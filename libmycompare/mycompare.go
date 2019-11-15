@@ -51,14 +51,16 @@ func (m MyCompare) exec() error {
 		return fmt.Errorf("%w", err)
 	}
 
-	err = m.compareTables(tableSrcs, tableDests)
+	notExists, err := m.compareTables(tableSrcs, tableDests)
 	if err != nil {
 		return fmt.Errorf("%w", err)
 	}
 
 	//จุดนี้ table ตรงกันหมดแล้วใช้ชื่อใน tableSrcs
 	for _, tbInfo := range tableSrcs {
-
+		if m.isContain(notExists, tbInfo.TableName) {
+			continue
+		}
 		srcSchs, err := srcDb.Schema(tbInfo.TableName)
 		if err != nil {
 			return fmt.Errorf("%w", err)
@@ -77,6 +79,15 @@ func (m MyCompare) exec() error {
 	}
 
 	return nil
+}
+
+func (m MyCompare) isContain(notExists []string, tbname string) bool {
+	for _, n := range notExists {
+		if n == tbname {
+			return true
+		}
+	}
+	return false
 }
 
 func (m MyCompare) compareSchema(tbName string, srcSchs, destSchs []SchemaInfo) error {
@@ -119,8 +130,8 @@ func (m MyCompare) compareSchema(tbName string, srcSchs, destSchs []SchemaInfo) 
 	return nil
 }
 
-func (m MyCompare) compareTables(tableSrcs, tableDests []TableInfo) error {
-
+func (m MyCompare) compareTables(tableSrcs, tableDests []TableInfo) ([]string, error) {
+	var notExists []string
 	for _, tableSrc := range tableSrcs {
 		found := false
 		for _, tableDest := range tableDests {
@@ -131,8 +142,9 @@ func (m MyCompare) compareTables(tableSrcs, tableDests []TableInfo) error {
 		}
 		if !found {
 			fmt.Printf("not found %s\n", tableSrc.TableName)
+			notExists = append(notExists, tableSrc.TableName)
 		}
 	}
 
-	return nil
+	return notExists, nil
 }
